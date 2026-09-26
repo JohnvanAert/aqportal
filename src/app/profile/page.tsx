@@ -16,7 +16,6 @@ import {
   Lock,
   CheckCircle2,
   AlertCircle,
-  ShieldCheck,
 } from 'lucide-react';
 
 interface SavedArticle {
@@ -113,7 +112,6 @@ export default function UserProfilePage() {
       setSubmitting(false);
     }
   };
-  
 
   const handleRemoveBookmark = async (articleId: string) => {
     try {
@@ -133,7 +131,7 @@ export default function UserProfilePage() {
 
   const handleLogout = async () => {
     await fetch('/api/auth/logout', { method: 'POST' });
-    router.push('/');
+    router.push('/login');
     router.refresh();
   };
 
@@ -160,7 +158,7 @@ export default function UserProfilePage() {
 
           <button
             onClick={handleLogout}
-            className="inline-flex items-center gap-1.5 text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 px-3.5 py-2 rounded-xl transition"
+            className="inline-flex items-center gap-1.5 text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 px-3.5 py-2 rounded-xl transition cursor-pointer"
           >
             <LogOut className="w-4 h-4" /> Выйти из аккаунта
           </button>
@@ -361,7 +359,7 @@ export default function UserProfilePage() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full bg-[#0096b1] hover:bg-[#007b92] text-white font-bold py-3 rounded-xl transition shadow-md text-sm disabled:opacity-50 mt-4"
+                className="w-full bg-[#0096b1] hover:bg-[#007b92] text-white font-bold py-3 rounded-xl transition shadow-md text-sm disabled:opacity-50 mt-4 cursor-pointer"
               >
                 {submitting ? 'Сохранение...' : 'Сохранить изменения'}
               </button>
