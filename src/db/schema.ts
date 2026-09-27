@@ -33,7 +33,6 @@ export const categories = pgTable('categories', {
   slug: text('slug').notNull().unique(),
 });
 
-// Статьи (RU / KK / EN)
 export const articles = pgTable('articles', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   title: text('title').notNull(),       // RU
@@ -55,9 +54,13 @@ export const articles = pgTable('articles', {
   viewsCount: integer('views_count').default(0).notNull(),
   publishedAt: timestamp('published_at').defaultNow().notNull(),
   categoryId: text('category_id').references(() => categories.id).notNull(),
+  
+  // 👈 Переносим authorId сюда, в список колонок:
+  authorId: text('author_id').references(() => users.id, { onDelete: 'set null' }),
 }, (table) => ({
   categoryIdx: index('category_idx').on(table.categoryId),
   publishedAtIdx: index('published_at_idx').on(table.publishedAt),
+  // здесь оставляем только индексы
 }));
 
 export const comments = pgTable('comments', {

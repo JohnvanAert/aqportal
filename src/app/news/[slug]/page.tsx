@@ -270,10 +270,11 @@ export default async function NewsDetailPage({ params, searchParams }: NewsPageP
             </div>
           )}
 
-          {/* Полное содержание статьи */}
-          <div className="text-gray-800 text-base md:text-lg leading-relaxed whitespace-pre-line font-normal space-y-4 pt-2">
-            {content}
-          </div>
+          {/* Полное содержание статьи (HTML от Tiptap) */}
+          <div 
+            className="text-gray-800 text-base md:text-lg leading-relaxed space-y-4 pt-2 [&>img]:rounded-2xl [&>img]:my-6 [&>img]:shadow-sm [&>blockquote]:border-l-4 [&>blockquote]:border-[#0096b1] [&>blockquote]:pl-4 [&>blockquote]:py-2 [&>blockquote]:italic [&>blockquote]:bg-gray-50 [&>blockquote]:rounded-r-xl"
+            dangerouslySetInnerHTML={{ __html: content }}
+          />
 
           {/* 🔗 КНОПКИ "ПОДЕЛИТЬСЯ" */}
           <ShareButtons title={title} />

@@ -1,8 +1,8 @@
 import { getSession, logout } from '@/src/lib/auth';
 import { redirect } from 'next/navigation';
 import { db } from '@/src/db';
-import { articles, categories } from '@/src/db/schema';
-import { desc, eq, ilike, count } from 'drizzle-orm';
+import { articles, categories, users } from '@/src/db/schema';
+import { desc, eq, ilike } from 'drizzle-orm';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
@@ -16,6 +16,7 @@ import {
   Search,
   ChevronLeft,
   ChevronRight,
+  User as UserIcon,
 } from 'lucide-react';
 import ArticleActions from './ArticleActions';
 
@@ -43,16 +44,16 @@ export default async function AdminDashboardPage({ searchParams }: AdminDashboar
   const whereCondition = searchQuery ? ilike(articles.title, `%${searchQuery}%`) : undefined;
 
   // 1. Получаем общее количество статей под текущий запрос
-  const totalCountResult = await db
-    .select({ count: count() })
+  const totalArticlesList = await db
+    .select({ id: articles.id })
     .from(articles)
     .where(whereCondition);
 
-  const totalArticles = totalCountResult[0]?.count || 0;
+  const totalArticles = totalArticlesList.length;
   const totalPages = Math.ceil(totalArticles / PAGE_SIZE) || 1;
   const offset = (currentPage - 1) * PAGE_SIZE;
 
-  // 2. Получаем список статей с постраничной навигацией
+  // 2. Получаем список статей с постраничной навигацией и присоединением автора
   const allArticles = await db
     .select({
       id: articles.id,
@@ -62,9 +63,12 @@ export default async function AdminDashboardPage({ searchParams }: AdminDashboar
       viewsCount: articles.viewsCount,
       publishedAt: articles.publishedAt,
       categoryName: categories.name,
+      authorName: users.name,
+      authorEmail: users.email,
     })
     .from(articles)
     .leftJoin(categories, eq(articles.categoryId, categories.id))
+    .leftJoin(users, eq(articles.authorId, users.id))
     .where(whereCondition)
     .orderBy(desc(articles.publishedAt))
     .limit(PAGE_SIZE)
@@ -83,37 +87,39 @@ export default async function AdminDashboardPage({ searchParams }: AdminDashboar
               height={35}
               className="h-8 w-auto object-contain brightness-0 invert"
             />
-            <span className="text-[10px] bg-gray-800 text-gray-300 px-2 py-0.5 rounded ml-1 font-bold">ADMIN</span>
+            <span className="text-[10px] bg-gray-800 text-gray-300 px-2 py-0.5 rounded ml-1 font-bold">
+              {session.role}
+            </span>
           </Link>
         </div>
 
         <div className="flex items-center space-x-4 text-xs">
-        <Link
+          <Link
             href="/"
             target="_blank"
             className="flex items-center gap-1.5 bg-gray-800 hover:bg-gray-700 text-gray-200 px-3 py-1.5 rounded-lg border border-gray-700 font-medium transition"
-        >
+          >
             <Globe className="w-3.5 h-3.5 text-[#0096b1]" /> Перейти на сайт
-        </Link>
+          </Link>
 
-        {/* Ссылка на личный профиль */}
-        <Link
+          {/* Ссылка на личный профиль */}
+          <Link
             href="/admin/profile"
             className="flex items-center gap-1.5 bg-gray-800 hover:bg-gray-700 text-gray-200 px-3 py-1.5 rounded-lg border border-gray-700 font-medium transition"
-        >
+          >
             <ShieldCheck className="w-4 h-4 text-[#0096b1]" />
             {session.email} ({session.role})
-        </Link>
+          </Link>
 
-        <form action={async () => {
-            'use server';
-            await logout();
-            redirect('/login');
-        }}>
-            <button type="submit" className="flex items-center gap-1 bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg font-medium transition">
-            <LogOut className="w-3.5 h-3.5" /> Выход
-            </button>
-        </form>
+          <form action={async () => {
+              'use server';
+              await logout();
+              redirect('/login');
+          }}>
+              <button type="submit" className="flex items-center gap-1 bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg font-medium transition cursor-pointer">
+                <LogOut className="w-3.5 h-3.5" /> Выход
+              </button>
+          </form>
         </div>
       </header>
 
@@ -124,6 +130,7 @@ export default async function AdminDashboardPage({ searchParams }: AdminDashboar
           </h1>
 
           <div className="flex items-center gap-3">
+            {/* Кнопка сотрудников доступна ТОЛЬКО для ADMIN */}
             {session.role === 'ADMIN' && (
               <Link
                 href="/admin/users"
@@ -133,6 +140,7 @@ export default async function AdminDashboardPage({ searchParams }: AdminDashboar
               </Link>
             )}
 
+            {/* Создать новость доступно и ADMIN, и EDITOR */}
             <Link
               href="/admin/articles/create"
               className="bg-[#0096b1] hover:bg-[#007b92] text-white px-4 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 shadow-md transition"
@@ -155,7 +163,7 @@ export default async function AdminDashboardPage({ searchParams }: AdminDashboar
             />
             <button
               type="submit"
-              className="absolute right-1.5 top-1.5 bg-[#0096b1] hover:bg-[#007b92] text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition"
+              className="absolute right-1.5 top-1.5 bg-[#0096b1] hover:bg-[#007b92] text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition cursor-pointer"
             >
               Найти
             </button>
@@ -169,6 +177,7 @@ export default async function AdminDashboardPage({ searchParams }: AdminDashboar
               <tr>
                 <th className="px-6 py-3">Заголовок</th>
                 <th className="px-6 py-3">Категория</th>
+                <th className="px-6 py-3">Автор</th>
                 <th className="px-6 py-3">Тип</th>
                 <th className="px-6 py-3">Просмотры</th>
                 <th className="px-6 py-3">Дата</th>
@@ -178,7 +187,7 @@ export default async function AdminDashboardPage({ searchParams }: AdminDashboar
             <tbody className="divide-y divide-gray-100 text-gray-700">
               {allArticles.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-gray-400 text-sm">
+                  <td colSpan={7} className="px-6 py-8 text-center text-gray-400 text-sm">
                     {searchQuery ? 'Статьи по вашему запросу не найдены' : 'Список статей пуст'}
                   </td>
                 </tr>
@@ -187,6 +196,10 @@ export default async function AdminDashboardPage({ searchParams }: AdminDashboar
                   <tr key={art.id} className="hover:bg-gray-50 transition">
                     <td className="px-6 py-4 font-semibold text-gray-900 line-clamp-1">{art.title}</td>
                     <td className="px-6 py-4 text-xs font-medium text-gray-500">{art.categoryName || 'Без категории'}</td>
+                    <td className="px-6 py-4 text-xs text-gray-600 flex items-center gap-1.5 pt-5">
+                      <UserIcon className="w-3.5 h-3.5 text-[#0096b1]" />
+                      {art.authorName || art.authorEmail || 'Не указан'}
+                    </td>
                     <td className="px-6 py-4">
                       {art.isHero ? (
                         <span className="bg-cyan-50 text-[#0096b1] border border-[#0096b1]/20 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">Главная (Hero)</span>
@@ -194,7 +207,7 @@ export default async function AdminDashboardPage({ searchParams }: AdminDashboar
                         <span className="bg-gray-100 text-gray-600 text-[10px] font-medium px-2 py-0.5 rounded-full uppercase">Стандартная</span>
                       )}
                     </td>
-                    <td className="px-6 py-4 text-xs flex items-center gap-1 text-gray-500">
+                    <td className="px-6 py-4 text-xs flex items-center gap-1 text-gray-500 pt-5">
                       <Eye className="w-3.5 h-3.5" /> {art.viewsCount}
                     </td>
                     <td className="px-6 py-4 text-xs text-gray-400">

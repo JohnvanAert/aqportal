@@ -94,7 +94,7 @@ export async function POST(req: Request) {
       await db.update(articles).set({ isHero: false }).where(eq(articles.isHero, true));
     }
 
-    // 3. Записываем обязательные поля во все колонки базы данных
+    // 3. Записываем поля во все колонки базы данных вместе с authorId
     const [newArticle] = await db
       .insert(articles)
       .values({
@@ -117,6 +117,7 @@ export async function POST(req: Request) {
         imageUrl: imageUrl || null,
         categoryId,
         isHero: Boolean(isHero),
+        authorId: (session as any).id || (session as any).userId, // 👈 Привязка ID текущего администратора или редактора
       })
       .returning();
 

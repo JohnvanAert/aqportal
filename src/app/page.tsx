@@ -554,6 +554,21 @@ export default async function HomePage({ searchParams }: HomePageProps) {
               <h4 className="font-bold text-gray-900 text-xs uppercase tracking-wider">Информация</h4>
               <ul className="space-y-2 text-xs">
                 <li>
+                  <Link href="/page/about" className="hover:text-[#0096b1] transition">
+                    О проекте
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/page/team" className="hover:text-[#0096b1] transition">
+                    Редакция
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/page/contacts" className="hover:text-[#0096b1] transition">
+                    Контакты
+                  </Link>
+                </li>
+                <li>
                   <Link href="/login" className="hover:text-[#0096b1] transition">
                     Вход / Регистрация
                   </Link>

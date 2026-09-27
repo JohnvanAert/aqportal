@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, CheckCircle2, AlertCircle, Upload, Languages } from 'lucide-react';
+import TiptapEditor from '@/src/components/TiptapEditor';
 
 interface Category {
   id: string;
@@ -320,17 +321,14 @@ export default function CreateArticlePage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 uppercase mb-2">
-                    Полный текст статьи (RU) <span className="text-red-500">*</span>
-                  </label>
-                  <textarea
-                    rows={8}
+                  <div>
+                  <TiptapEditor
+                    label="Полный текст статьи (RU)"
                     required
                     value={contentRu}
-                    onChange={(e) => setContentRu(e.target.value)}
-                    placeholder="Введите полный текст новости..."
-                    className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl text-sm font-medium text-gray-900 focus:outline-none focus:border-[#0096b1]"
+                    onChange={setContentRu}
                   />
+                </div>
                 </div>
               </div>
             )}
@@ -373,17 +371,14 @@ export default function CreateArticlePage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 uppercase mb-2">
-                    Мақаланың толық мәтіні (KK) <span className="text-red-500">*</span>
-                  </label>
-                  <textarea
-                    rows={8}
+                  <div>
+                  <TiptapEditor
+                    label="Мақаланың толық мәтіні (KK)"
                     required
                     value={contentKk}
-                    onChange={(e) => setContentKk(e.target.value)}
-                    placeholder="Жаңалықтың толық мәтінін енгізіңіз..."
-                    className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl text-sm font-medium text-gray-900 focus:outline-none focus:border-[#0096b1]"
+                    onChange={setContentKk}
                   />
+                </div>
                 </div>
               </div>
             )}
@@ -426,17 +421,14 @@ export default function CreateArticlePage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 uppercase mb-2">
-                    Full Article Content (EN) <span className="text-red-500">*</span>
-                  </label>
-                  <textarea
-                    rows={8}
+                  <div>
+                  <TiptapEditor
+                    label="Full Article Content (EN)"
                     required
                     value={contentEn}
-                    onChange={(e) => setContentEn(e.target.value)}
-                    placeholder="Enter full news content in English..."
-                    className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl text-sm font-medium text-gray-900 focus:outline-none focus:border-[#0096b1]"
+                    onChange={setContentEn}
                   />
+                </div>
                 </div>
               </div>
             )}
