@@ -12,10 +12,11 @@ import {
   Mail,
   Lock,
   User,
-  ShieldAlert,
   Loader2,
   ArrowUpRight,
   ArrowDownRight,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 
 interface UserData {
@@ -38,6 +39,10 @@ export default function UsersPage() {
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  // Состояние для пагинации
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 5; // Количество пользователей на страницу
 
   const fetchUsers = async () => {
     try {
@@ -117,13 +122,18 @@ export default function UsersPage() {
     }
   };
 
+  // Логика пагинации
+  const totalPages = Math.ceil(usersList.length / PAGE_SIZE) || 1;
+  const startIndex = (currentPage - 1) * PAGE_SIZE;
+  const currentUsers = usersList.slice(startIndex, startIndex + PAGE_SIZE);
+
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto space-y-8">
         <div className="flex items-center justify-between">
           <Link
             href="/admin"
-            className="inline-flex items-center gap-2 text-sm font-semibold text-gray-600 hover:text-black"
+            className="inline-flex items-center gap-2 text-sm font-semibold text-gray-600 hover:text-black transition"
           >
             <ArrowLeft className="w-4 h-4" /> Назад в панель управления
           </Link>
@@ -214,92 +224,125 @@ export default function UsersPage() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full bg-[#0096b1] hover:bg-[#007b92] text-white font-bold py-3 rounded-xl transition duration-200 shadow-md text-sm disabled:opacity-50"
+                className="w-full bg-[#0096b1] hover:bg-[#007b92] text-white font-bold py-3 rounded-xl transition duration-200 shadow-md text-sm disabled:opacity-50 cursor-pointer"
               >
                 {submitting ? 'Создание...' : 'Создать пользователя'}
               </button>
             </form>
           </div>
 
-          {/* Полная таблица всех пользователей (С возможностью повышения роли) */}
-          <div className="lg:col-span-8 bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
-            <div className="p-6 border-b border-gray-100 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                <Users className="w-5 h-5 text-[#0096b1]" /> Пользователи и Редакторы ({usersList.length})
-              </h2>
+          {/* Таблица пользователей с пагинацией */}
+          <div className="lg:col-span-8 bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm flex flex-col justify-between">
+            <div>
+              <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+                <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                  <Users className="w-5 h-5 text-[#0096b1]" /> Пользователи и Редакторы ({usersList.length})
+                </h2>
+              </div>
+
+              {loading ? (
+                <div className="p-12 text-center text-sm text-gray-400 flex justify-center items-center gap-2">
+                  <Loader2 className="w-5 h-5 animate-spin text-[#0096b1]" /> Загрузка пользователей...
+                </div>
+              ) : currentUsers.length === 0 ? (
+                <div className="p-12 text-center text-sm text-gray-400">
+                  Пользователей пока нет.
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm">
+                    <thead className="bg-gray-100 text-gray-600 uppercase text-[11px] tracking-wider border-b border-gray-200">
+                      <tr>
+                        <th className="px-6 py-3">Пользователь</th>
+                        <th className="px-6 py-3">Текущая Роль</th>
+                        <th className="px-6 py-3">Дата регистрации</th>
+                        <th className="px-6 py-3 text-right">Управление</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 text-gray-700">
+                      {currentUsers.map((userItem) => (
+                        <tr key={userItem.id} className="hover:bg-gray-50 transition">
+                          <td className="px-6 py-4">
+                            <div className="font-semibold text-gray-900">{userItem.name || 'Без имени'}</div>
+                            <div className="text-xs text-gray-400">{userItem.email}</div>
+                          </td>
+                          <td className="px-6 py-4">
+                            {userItem.role === 'ADMIN' && (
+                              <span className="bg-black text-white text-[10px] font-bold px-2.5 py-1 rounded-full uppercase flex items-center gap-1 w-fit">
+                                <ShieldCheck className="w-3 h-3 text-[#0096b1]" /> ADMIN
+                              </span>
+                            )}
+                            {userItem.role === 'EDITOR' && (
+                              <span className="bg-cyan-50 text-[#0096b1] border border-[#0096b1]/20 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase w-fit inline-block">
+                                EDITOR
+                              </span>
+                            )}
+                            {userItem.role === 'USER' && (
+                              <span className="bg-gray-100 text-gray-600 border border-gray-200 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase w-fit inline-block">
+                                USER
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 text-xs text-gray-400">
+                            {new Date(userItem.createdAt).toLocaleDateString('ru-RU')}
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            {userItem.role !== 'ADMIN' && (
+                              <div className="flex items-center justify-end gap-2">
+                                {userItem.role === 'USER' ? (
+                                  <button
+                                    type="button"
+                                    disabled={updatingId === userItem.id}
+                                    onClick={() => handleRoleChange(userItem.id, 'EDITOR')}
+                                    className="inline-flex items-center gap-1 bg-[#0096b1] hover:bg-[#007b92] text-white text-xs font-bold px-3 py-1.5 rounded-lg transition shadow-sm disabled:opacity-50 cursor-pointer"
+                                  >
+                                    <ArrowUpRight className="w-3.5 h-3.5" /> Назначить Редактором
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    disabled={updatingId === userItem.id}
+                                    onClick={() => handleRoleChange(userItem.id, 'USER')}
+                                    className="inline-flex items-center gap-1 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-bold px-3 py-1.5 rounded-lg transition disabled:opacity-50 cursor-pointer"
+                                  >
+                                    <ArrowDownRight className="w-3.5 h-3.5" /> Понизить до User
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
 
-            {loading ? (
-              <div className="p-12 text-center text-sm text-gray-400 flex justify-center items-center gap-2">
-                <Loader2 className="w-5 h-5 animate-spin text-[#0096b1]" /> Загрузка пользователей...
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm">
-                  <thead className="bg-gray-100 text-gray-600 uppercase text-[11px] tracking-wider border-b border-gray-200">
-                    <tr>
-                      <th className="px-6 py-3">Пользователь</th>
-                      <th className="px-6 py-3">Текущая Роль</th>
-                      <th className="px-6 py-3">Дата регистрации</th>
-                      <th className="px-6 py-3 text-right">Управление</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100 text-gray-700">
-                    {usersList.map((userItem) => (
-                      <tr key={userItem.id} className="hover:bg-gray-50 transition">
-                        <td className="px-6 py-4">
-                          <div className="font-semibold text-gray-900">{userItem.name || 'Без имени'}</div>
-                          <div className="text-xs text-gray-400">{userItem.email}</div>
-                        </td>
-                        <td className="px-6 py-4">
-                          {userItem.role === 'ADMIN' && (
-                            <span className="bg-black text-white text-[10px] font-bold px-2.5 py-1 rounded-full uppercase flex items-center gap-1 w-fit">
-                              <ShieldCheck className="w-3 h-3 text-[#0096b1]" /> ADMIN
-                            </span>
-                          )}
-                          {userItem.role === 'EDITOR' && (
-                            <span className="bg-cyan-50 text-[#0096b1] border border-[#0096b1]/20 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase w-fit inline-block">
-                              EDITOR
-                            </span>
-                          )}
-                          {userItem.role === 'USER' && (
-                            <span className="bg-gray-100 text-gray-600 border border-gray-200 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase w-fit inline-block">
-                              USER
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 text-xs text-gray-400">
-                          {new Date(userItem.createdAt).toLocaleDateString('ru-RU')}
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          {userItem.role !== 'ADMIN' && (
-                            <div className="flex items-center justify-end gap-2">
-                              {userItem.role === 'USER' ? (
-                                <button
-                                  type="button"
-                                  disabled={updatingId === userItem.id}
-                                  onClick={() => handleRoleChange(userItem.id, 'EDITOR')}
-                                  className="inline-flex items-center gap-1 bg-[#0096b1] hover:bg-[#007b92] text-white text-xs font-bold px-3 py-1.5 rounded-lg transition shadow-sm disabled:opacity-50"
-                                >
-                                  <ArrowUpRight className="w-3.5 h-3.5" /> Назначить Редактором
-                                </button>
-                              ) : (
-                                <button
-                                  type="button"
-                                  disabled={updatingId === userItem.id}
-                                  onClick={() => handleRoleChange(userItem.id, 'USER')}
-                                  className="inline-flex items-center gap-1 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-bold px-3 py-1.5 rounded-lg transition disabled:opacity-50"
-                                >
-                                  <ArrowDownRight className="w-3.5 h-3.5" /> Понизить до User
-                                </button>
-                              )}
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+            {/* Панель переключения страниц */}
+            {totalPages > 1 && (
+              <div className="p-4 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500 bg-gray-50/50">
+                <span>
+                  Страница <strong className="text-gray-800">{currentPage}</strong> из <strong className="text-gray-800">{totalPages}</strong> (всего пользователей: {usersList.length})
+                </span>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                    disabled={currentPage <= 1}
+                    className="px-3 py-1.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-100 transition flex items-center gap-1 font-semibold disabled:opacity-40 cursor-pointer"
+                  >
+                    <ChevronLeft className="w-4 h-4" /> Назад
+                  </button>
+
+                  <button
+                    onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage >= totalPages}
+                    className="px-3.5 py-1.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-100 transition flex items-center gap-1 font-semibold disabled:opacity-40 cursor-pointer"
+                  >
+                    Вперед <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             )}
           </div>

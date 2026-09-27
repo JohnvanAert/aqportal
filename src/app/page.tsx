@@ -8,6 +8,7 @@ import { cookies } from 'next/headers';
 import LanguageSwitcher from '@/src/components/LanguageSwitcher';
 import { dictionaries, getLocalizedField, Locale } from '@/src/lib/i18n';
 import { getSession } from '@/src/lib/auth';
+import MobileMenu from '@/src/components/MobileMenu';
 
 export const revalidate = 0; // Всегда свежие данные
 
@@ -35,12 +36,15 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   const currentPage = Math.max(1, Number(page) || 1);
   const PAGE_SIZE = 6; // Количество новостей в основной сетке на страницу
   const session = await getSession();
+  
   // Загружаем все категории для фильтров в шапке и футере
   const allCategories = await db.select().from(categories);
+  
   let profileHref = '/login';
   if (session) {
     profileHref = (session.role === 'ADMIN' || session.role === 'EDITOR') ? '/admin' : '/profile';
   }
+
   // 2. Условия фильтрации для основного списка
   const conditions = [];
   if (searchQuery) {
@@ -152,9 +156,19 @@ export default async function HomePage({ searchParams }: HomePageProps) {
     <div className="min-h-screen bg-gray-50 text-neutral-900 font-sans flex flex-col justify-between">
       <div>
         {/* 🟢 ШАПКА / HEADER */}
+        {/* 🟢 ШАПКА / HEADER */}
         <header className="border-b border-gray-200 sticky top-0 bg-white/95 backdrop-blur z-50">
           <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
-            <div className="flex items-center space-x-6">
+            
+            {/* ЛЕВАЯ ЧАСТЬ: Бургер + Логотип */}
+            <div className="flex items-center space-x-3">
+              <MobileMenu
+                categories={allCategories}
+                currentLang={currentLang}
+                selectedCategory={selectedCategory}
+                searchQuery={searchQuery}
+              />
+
               <Link href={`/?lang=${currentLang}`} className="flex items-center space-x-3 flex-shrink-0">
                 <Image
                   src="/logo.png"
@@ -167,7 +181,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
               </Link>
             </div>
 
-            {/* НАВИГАЦИЯ ПО КАТЕГОРИЯМ (ФИЛЬТРЫ) */}
+            {/* НАВИГАЦИЯ ПО КАТЕГОРИЯМ (ФИЛЬТРЫ) ДЛЯ ПК */}
             <nav className="hidden md:flex space-x-6 font-medium text-sm overflow-x-auto">
               <Link
                 href={`/?lang=${currentLang}`}
@@ -197,8 +211,8 @@ export default async function HomePage({ searchParams }: HomePageProps) {
               })}
             </nav>
 
-            {/* ПОИСК + ПЕРЕКЛЮЧАТЕЛЬ ЯЗЫКА В ШАПКЕ */}
-            <div className="flex items-center space-x-3">
+            {/* ПРАВАЯ ЧАСТЬ ШАПКИ (ПОИСК, ЯЗЫК, ПРОФИЛЬ) */}
+            <div className="flex items-center space-x-2 sm:space-x-3">
               <form method="GET" action="/" className="relative hidden sm:block">
                 <input type="hidden" name="lang" value={currentLang} />
                 {selectedCategory && <input type="hidden" name="cat" value={selectedCategory} />}
@@ -212,21 +226,24 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                 <Search className="w-4 h-4 text-gray-400 absolute left-3 top-2" />
               </form>
 
-              {/* Выпадающий список языков */}
-              <LanguageSwitcher currentLang={currentLang} />
+              {/* Язык на ПК */}
+              <div className="hidden sm:block">
+                <LanguageSwitcher currentLang={currentLang} />
+              </div>
 
-              {/* Кнопка профиля с динамической проверкой сессии */}
-            <Link 
-              href={profileHref} 
-              className="p-2 hover:bg-gray-100 rounded-full transition relative group"
-              title={session ? `Войти в аккаунт (${session.email})` : 'Войти'}
-            >
-              <User className="w-5 h-5 text-gray-600" />
-              {session && (
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#0096b1] rounded-full ring-2 ring-white" />
-              )}
-            </Link>
+              {/* Кнопка профиля */}
+              <Link 
+                href={profileHref} 
+                className="p-2 hover:bg-gray-100 rounded-full transition relative group"
+                title={session ? `Войти в аккаунт (${session.email})` : 'Войти'}
+              >
+                <User className="w-5 h-5 text-gray-600" />
+                {session && (
+                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#0096b1] rounded-full ring-2 ring-white" />
+                )}
+              </Link>
             </div>
+
           </div>
         </header>
 

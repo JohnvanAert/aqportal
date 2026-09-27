@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/src/db';
 import { users } from '@/src/db/schema';
-import { desc, eq } from 'drizzle-orm';
+import { desc, eq, count } from 'drizzle-orm';
 import { getSession } from '@/src/lib/auth';
 import bcrypt from 'bcryptjs';
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
     const session = await getSession();
 
@@ -13,6 +13,17 @@ export async function GET() {
       return NextResponse.json({ error: 'Доступ запрещен' }, { status: 403 });
     }
 
+    // Извлекаем параметры page и limit из URL (по умолчанию: страница 1, по 10 штук)
+    const url = new URL(req.url);
+    const page = Math.max(1, Number(url.searchParams.get('page')) || 1);
+    const limit = Math.max(1, Number(url.searchParams.get('limit')) || 10);
+    const offset = (page - 1) * limit;
+
+    // Считаем общее количество пользователей в базе
+    const totalResult = await db.select({ count: count() }).from(users);
+    const total = totalResult[0]?.count || 0;
+
+    // Загружаем только нужный срез данных (пагинация на стороне БД)
     const allUsers = await db
       .select({
         id: users.id,
@@ -22,9 +33,19 @@ export async function GET() {
         createdAt: users.createdAt,
       })
       .from(users)
-      .orderBy(desc(users.createdAt));
+      .orderBy(desc(users.createdAt))
+      .limit(limit)
+      .offset(offset);
 
-    return NextResponse.json({ users: allUsers });
+    return NextResponse.json({
+      users: allUsers,
+      pagination: {
+        total,
+        totalPages: Math.ceil(total / limit) || 1,
+        currentPage: page,
+        limit,
+      },
+    });
   } catch (err) {
     console.error('Fetch users error:', err);
     return NextResponse.json({ error: 'Ошибка сервера' }, { status: 500 });

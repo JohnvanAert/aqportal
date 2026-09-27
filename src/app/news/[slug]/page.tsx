@@ -12,6 +12,7 @@ import CommentForm from '@/src/components/CommentForm';
 import CommentItem, { CommentType } from '@/src/components/CommentItem';
 import LanguageSwitcher from '@/src/components/LanguageSwitcher';
 import { dictionaries, getLocalizedField, Locale } from '@/src/lib/i18n';
+import CommentListWrapper from '@/src/components/CommentListWrapper';
 
 export const revalidate = 0; // Всегда свежие данные + инкремент просмотров
 
@@ -313,19 +314,14 @@ export default async function NewsDetailPage({ params, searchParams }: NewsPageP
             </div>
           )}
 
-          {/* Древовидный список комментариев */}
+          {/* Древовидный список комментариев с постраничной подгрузкой */}
           {rootComments.length > 0 ? (
-            <div className="space-y-4">
-              {rootComments.map((comment) => (
-                <CommentItem
-                  key={comment.id}
-                  comment={comment}
-                  articleId={article.id}
-                  isAdmin={isAdmin}
-                  isAuthenticated={Boolean(session)}
-                />
-              ))}
-            </div>
+            <CommentListWrapper
+              rootComments={rootComments}
+              articleId={article.id}
+              isAdmin={isAdmin}
+              isAuthenticated={Boolean(session)}
+            />
           ) : (
             <p className="text-sm text-gray-500 italic text-center py-6 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
               {dict.noComments}
