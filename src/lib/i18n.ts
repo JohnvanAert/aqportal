@@ -20,7 +20,7 @@ export const dictionaries = {
   },
   kk: {
     all: 'Барлығы',
-    searchPlaceholder: 'Жаңалықтардыค้นдеу...',
+    searchPlaceholder: 'Жаңалықтарды өңдеу...',
     readAlso: 'Тағы оқыңыздар',
     latestNews: 'Соңғы жаңалықтар',
     share: 'Бөлісу:',
