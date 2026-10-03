@@ -21,6 +21,10 @@ export async function POST(req: Request) {
     if (!user || !user.password) {
       return NextResponse.json({ error: 'Неверный email или пароль' }, { status: 401 });
     }
+    // 🛑 Проверка на блокировку
+    if (user.isBlocked) {
+      return NextResponse.json({ error: 'Ваш аккаунт заблокирован администратором' }, { status: 403 });
+    }
 
     // Сравниваем пароли
     const isMatch = await bcrypt.compare(password, user.password);

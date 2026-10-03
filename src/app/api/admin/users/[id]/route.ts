@@ -10,27 +10,36 @@ export async function PATCH(
 ) {
   try {
     const session = await getSession();
-
-    // Изменять роли может ТОЛЬКО Главный Администратор (ADMIN)
     if (!session || session.role !== 'ADMIN') {
-      return NextResponse.json({ error: 'Доступ запрещён' }, { status: 403 });
+      return NextResponse.json({ error: 'Доступ запрещен' }, { status: 403 });
     }
 
     const { id } = await params;
-    const { role } = await req.json();
+    const body = await req.json();
+    const updateData: Record<string, any> = {};
 
-    if (!['USER', 'EDITOR', 'ADMIN'].includes(role)) {
-      return NextResponse.json({ error: 'Неверная роль' }, { status: 400 });
+    // Если передан флаг блокировки
+    if (typeof body.isBlocked === 'boolean') {
+      updateData.isBlocked = body.isBlocked;
     }
 
-    await db
-      .update(users)
-      .set({ role })
-      .where(eq(users.id, id));
+    // Если передана роль
+    if (body.role) {
+      if (!['USER', 'EDITOR', 'ADMIN'].includes(body.role)) {
+        return NextResponse.json({ error: 'Неверная роль' }, { status: 400 });
+      }
+      updateData.role = body.role;
+    }
 
-    return NextResponse.json({ success: true });
+    const [updatedUser] = await db
+      .update(users)
+      .set(updateData)
+      .where(eq(users.id, id))
+      .returning();
+
+    return NextResponse.json({ success: true, user: updatedUser });
   } catch (err) {
-    console.error('Update user role error:', err);
-    return NextResponse.json({ error: ' Ошибка сервера' }, { status: 500 });
+    console.error('Update user error:', err);
+    return NextResponse.json({ error: 'Ошибка сервера' }, { status: 500 });
   }
 }

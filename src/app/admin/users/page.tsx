@@ -17,6 +17,8 @@ import {
   ArrowDownRight,
   ChevronLeft,
   ChevronRight,
+  Ban,
+  Unlock,
 } from 'lucide-react';
 
 interface UserData {
@@ -24,6 +26,7 @@ interface UserData {
   name: string | null;
   email: string;
   role: 'ADMIN' | 'EDITOR' | 'USER';
+  isBlocked: boolean;
   createdAt: string;
 }
 
@@ -42,7 +45,7 @@ export default function UsersPage() {
 
   // Состояние для пагинации
   const [currentPage, setCurrentPage] = useState(1);
-  const PAGE_SIZE = 5; // Количество пользователей на страницу
+  const PAGE_SIZE = 5;
 
   const fetchUsers = async () => {
     try {
@@ -62,7 +65,6 @@ export default function UsersPage() {
     fetchUsers();
   }, []);
 
-  // Ручное создание сотрудника администратором
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -94,7 +96,7 @@ export default function UsersPage() {
     }
   };
 
-  // Изменение роли зарегистрированного пользователя (USER -> EDITOR / EDITOR -> USER)
+  // Изменение роли
   const handleRoleChange = async (userId: string, newRole: 'USER' | 'EDITOR' | 'ADMIN') => {
     setUpdatingId(userId);
     setError('');
@@ -122,7 +124,34 @@ export default function UsersPage() {
     }
   };
 
-  // Логика пагинации
+  // Блокировка / Разблокировка пользователя
+  const handleBlockToggle = async (userId: string, currentStatus: boolean) => {
+    setUpdatingId(userId);
+    setError('');
+    setSuccess('');
+
+    try {
+      const res = await fetch(`/api/admin/users/${userId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isBlocked: !currentStatus }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setSuccess(currentStatus ? 'Пользователь разблокирован' : 'Пользователь заблокирован');
+        fetchUsers();
+      } else {
+        setError(data.error || 'Не удалось изменить статус блокировки');
+      }
+    } catch {
+      setError('Ошибка соединения');
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
   const totalPages = Math.ceil(usersList.length / PAGE_SIZE) || 1;
   const startIndex = (currentPage - 1) * PAGE_SIZE;
   const currentUsers = usersList.slice(startIndex, startIndex + PAGE_SIZE);
@@ -143,7 +172,7 @@ export default function UsersPage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          {/* Форма добавления сотрудника вручную */}
+          {/* Форма добавления сотрудника */}
           <div className="lg:col-span-4 bg-white rounded-2xl border border-gray-200 p-6 shadow-sm h-fit">
             <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-4">
               <UserPlus className="w-5 h-5 text-[#0096b1]" /> Создать учетную запись
@@ -231,7 +260,7 @@ export default function UsersPage() {
             </form>
           </div>
 
-          {/* Таблица пользователей с пагинацией */}
+          {/* Таблица пользователей */}
           <div className="lg:col-span-8 bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm flex flex-col justify-between">
             <div>
               <div className="p-6 border-b border-gray-100 flex items-center justify-between">
@@ -254,8 +283,8 @@ export default function UsersPage() {
                     <thead className="bg-gray-100 text-gray-600 uppercase text-[11px] tracking-wider border-b border-gray-200">
                       <tr>
                         <th className="px-6 py-3">Пользователь</th>
-                        <th className="px-6 py-3">Текущая Роль</th>
-                        <th className="px-6 py-3">Дата регистрации</th>
+                        <th className="px-6 py-3">Статус</th>
+                        <th className="px-6 py-3">Роль</th>
                         <th className="px-6 py-3 text-right">Управление</th>
                       </tr>
                     </thead>
@@ -263,8 +292,22 @@ export default function UsersPage() {
                       {currentUsers.map((userItem) => (
                         <tr key={userItem.id} className="hover:bg-gray-50 transition">
                           <td className="px-6 py-4">
-                            <div className="font-semibold text-gray-900">{userItem.name || 'Без имени'}</div>
+                            <div className="font-semibold text-gray-900 flex items-center gap-2">
+                              {userItem.name || 'Без имени'}
+                              {userItem.isBlocked && (
+                                <span className="bg-red-100 text-red-600 text-[9px] px-2 py-0.5 rounded-full font-bold">
+                                  ЗАБЛОКИРОВАН
+                                </span>
+                              )}
+                            </div>
                             <div className="text-xs text-gray-400">{userItem.email}</div>
+                          </td>
+                          <td className="px-6 py-4 text-xs">
+                            {userItem.isBlocked ? (
+                              <span className="text-red-600 font-semibold">Заблокирован</span>
+                            ) : (
+                              <span className="text-green-600 font-semibold">Активен</span>
+                            )}
                           </td>
                           <td className="px-6 py-4">
                             {userItem.role === 'ADMIN' && (
@@ -283,31 +326,51 @@ export default function UsersPage() {
                               </span>
                             )}
                           </td>
-                          <td className="px-6 py-4 text-xs text-gray-400">
-                            {new Date(userItem.createdAt).toLocaleDateString('ru-RU')}
-                          </td>
                           <td className="px-6 py-4 text-right">
                             {userItem.role !== 'ADMIN' && (
                               <div className="flex items-center justify-end gap-2">
+                                {/* Кнопка смены роли */}
                                 {userItem.role === 'USER' ? (
                                   <button
                                     type="button"
                                     disabled={updatingId === userItem.id}
                                     onClick={() => handleRoleChange(userItem.id, 'EDITOR')}
-                                    className="inline-flex items-center gap-1 bg-[#0096b1] hover:bg-[#007b92] text-white text-xs font-bold px-3 py-1.5 rounded-lg transition shadow-sm disabled:opacity-50 cursor-pointer"
+                                    className="inline-flex items-center gap-1 bg-[#0096b1] hover:bg-[#007b92] text-white text-xs font-bold px-2.5 py-1.5 rounded-lg transition shadow-sm disabled:opacity-50 cursor-pointer"
                                   >
-                                    <ArrowUpRight className="w-3.5 h-3.5" /> Назначить Редактором
+                                    <ArrowUpRight className="w-3.5 h-3.5" /> Редактор
                                   </button>
                                 ) : (
                                   <button
                                     type="button"
                                     disabled={updatingId === userItem.id}
                                     onClick={() => handleRoleChange(userItem.id, 'USER')}
-                                    className="inline-flex items-center gap-1 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-bold px-3 py-1.5 rounded-lg transition disabled:opacity-50 cursor-pointer"
+                                    className="inline-flex items-center gap-1 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-bold px-2.5 py-1.5 rounded-lg transition disabled:opacity-50 cursor-pointer"
                                   >
-                                    <ArrowDownRight className="w-3.5 h-3.5" /> Понизить до User
+                                    <ArrowDownRight className="w-3.5 h-3.5" /> В User
                                   </button>
                                 )}
+
+                                {/* Кнопка блокировки / разблокировки */}
+                                <button
+                                  type="button"
+                                  disabled={updatingId === userItem.id}
+                                  onClick={() => handleBlockToggle(userItem.id, userItem.isBlocked)}
+                                  className={`inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1.5 rounded-lg transition shadow-sm disabled:opacity-50 cursor-pointer ${
+                                    userItem.isBlocked
+                                      ? 'bg-green-600 hover:bg-green-700 text-white'
+                                      : 'bg-red-600 hover:bg-red-700 text-white'
+                                  }`}
+                                >
+                                  {userItem.isBlocked ? (
+                                    <>
+                                      <Unlock className="w-3.5 h-3.5" /> Разблокировать
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Ban className="w-3.5 h-3.5" /> Заблокировать
+                                    </>
+                                  )}
+                                </button>
                               </div>
                             )}
                           </td>
@@ -319,7 +382,7 @@ export default function UsersPage() {
               )}
             </div>
 
-            {/* Панель переключения страниц */}
+            {/* Пагинация */}
             {totalPages > 1 && (
               <div className="p-4 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500 bg-gray-50/50">
                 <span>

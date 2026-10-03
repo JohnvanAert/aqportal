@@ -30,6 +30,7 @@ export async function GET(req: Request) {
         name: users.name,
         email: users.email,
         role: users.role,
+        isBlocked: users.isBlocked,
         createdAt: users.createdAt,
       })
       .from(users)

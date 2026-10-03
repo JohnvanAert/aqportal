@@ -45,6 +45,7 @@ export async function POST(req: Request) {
       summaryEn,
       categoryId,
       imageUrl,
+      imageSource,
       isHero,
     } = await req.json();
 
@@ -115,6 +116,9 @@ export async function POST(req: Request) {
 
         slug,
         imageUrl: imageUrl || null,
+        imageSource: imageSource ? imageSource.trim() : null,
+        imageSourceKk: imageSource ? imageSource.trim() : null,
+        imageSourceEn: imageSource ? imageSource.trim() : null,
         categoryId,
         isHero: Boolean(isHero),
         authorId: (session as any).id || (session as any).userId, // 👈 Привязка ID текущего администратора или редактора

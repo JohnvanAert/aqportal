@@ -19,6 +19,14 @@ export async function POST(req: Request) {
         { status: 401 }
       );
     }
+    
+    // 🛑 Проверка на блокировку
+    if (user.isBlocked) {
+      return NextResponse.json(
+        { error: 'Ваш аккаунт заблокирован администратором' },
+        { status: 403 }
+      );
+    }
 
     // Запрещаем вход обычным читателям (USER)
     if (user.role === 'USER') {

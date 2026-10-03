@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, CheckCircle2, AlertCircle, Upload, Languages } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, AlertCircle, Upload, Languages, Camera } from 'lucide-react';
 import TiptapEditor from '@/src/components/TiptapEditor';
 
 interface Category {
@@ -37,6 +37,9 @@ export default function CreateArticlePage() {
   // Общие параметры статьи
   const [categoryId, setCategoryId] = useState('');
   const [imageUrl, setImageUrl] = useState('');
+  const [imageSource, setImageSource] = useState('');
+  const [imageSourceKk, setImageSourceKk] = useState('');
+  const [imageSourceEn, setImageSourceEn] = useState('');
   const [isHero, setIsHero] = useState(false);
 
   const [uploading, setUploading] = useState(false);
@@ -137,6 +140,9 @@ export default function CreateArticlePage() {
 
           categoryId,
           imageUrl: imageUrl || null,
+          imageSource: imageSource.trim() || null,
+          imageSourceKk: imageSource.trim() || null,
+          imageSourceEn: imageSource.trim() || null,
           isHero,
         }),
       });
@@ -282,6 +288,7 @@ export default function CreateArticlePage() {
                 </div>
               </div>
             </div>
+            
 
             {/* ВКЛАДКА: РУССКИЙ ЯЗЫК */}
             {activeTab === 'RU' && (
@@ -329,6 +336,18 @@ export default function CreateArticlePage() {
                     onChange={setContentRu}
                   />
                 </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase mb-2">
+                    Источник фотографии (RU)
+                  </label>
+                  <input
+                    type="text"
+                    value={imageSource}
+                    onChange={(e) => setImageSource(e.target.value)}
+                    placeholder="Например: Пресс-служба акимата"
+                    className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl text-sm"
+                  />
                 </div>
               </div>
             )}
@@ -380,6 +399,18 @@ export default function CreateArticlePage() {
                   />
                 </div>
                 </div>
+                <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase mb-2">
+                  Фото көзі (KK)
+                </label>
+                <input
+                  type="text"
+                  value={imageSourceKk}
+                  onChange={(e) => setImageSourceKk(e.target.value)}
+                  placeholder="Мысалы: Әкімдіктің баспасөз қызметі"
+                  className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl text-sm"
+                />
+              </div>
               </div>
             )}
 
@@ -430,6 +461,18 @@ export default function CreateArticlePage() {
                   />
                 </div>
                 </div>
+                <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase mb-2">
+                  Photo Source (EN)
+                </label>
+                <input
+                  type="text"
+                  value={imageSourceEn}
+                  onChange={(e) => setImageSourceEn(e.target.value)}
+                  placeholder="For example: Press service"
+                  className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl text-sm"
+                />
+              </div>
               </div>
             )}
 

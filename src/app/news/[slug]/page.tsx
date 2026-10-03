@@ -4,7 +4,7 @@ import Image from 'next/image';
 import { db } from '@/src/db';
 import { articles, categories, comments, users } from '@/src/db/schema';
 import { eq, sql, desc, ne, and } from 'drizzle-orm';
-import { Eye, ArrowLeft, Calendar, Search, User, MessageSquare, LogIn } from 'lucide-react';
+import { Eye, ArrowLeft, Calendar, Search, User, MessageSquare, LogIn, Camera, PenTool } from 'lucide-react';
 import { getSession } from '@/src/lib/auth';
 import { cookies } from 'next/headers';
 import ShareButtons from '@/src/components/ShareButtons';
@@ -14,7 +14,7 @@ import LanguageSwitcher from '@/src/components/LanguageSwitcher';
 import { dictionaries, getLocalizedField, Locale } from '@/src/lib/i18n';
 import CommentListWrapper from '@/src/components/CommentListWrapper';
 
-export const revalidate = 0; // Всегда свежие данные + инкремент просмотров
+export const revalidate = 0;
 
 interface NewsPageProps {
   params: Promise<{
@@ -30,14 +30,13 @@ export default async function NewsDetailPage({ params, searchParams }: NewsPageP
   const { lang } = await searchParams;
   const session = await getSession();
 
-  // Определение локали (из URL или из Cookies)
   const cookieStore = await cookies();
   const cookieLang = cookieStore.get('NEXT_LOCALE')?.value;
   const currentLang = (lang || cookieLang || 'ru') as Locale;
 
   const dict = dictionaries[currentLang] || dictionaries.ru;
 
-  // 1. Ищем статью по slug с присоединением категории и всех языковых полей
+  // 1. Ищем статью + автора + локализованные источники фото
   const articleRows = await db
     .select({
       id: articles.id,
@@ -51,15 +50,20 @@ export default async function NewsDetailPage({ params, searchParams }: NewsPageP
       contentKk: articles.contentKk,
       contentEn: articles.contentEn,
       imageUrl: articles.imageUrl,
+      imageSource: articles.imageSource,
+      imageSourceKk: articles.imageSourceKk,
+      imageSourceEn: articles.imageSourceEn,
       viewsCount: articles.viewsCount,
       publishedAt: articles.publishedAt,
       categoryId: articles.categoryId,
       categoryName: categories.name,
       categoryNameKk: categories.nameKk,
       categoryNameEn: categories.nameEn,
+      authorName: users.name,
     })
     .from(articles)
     .leftJoin(categories, eq(articles.categoryId, categories.id))
+    .leftJoin(users, eq(articles.authorId, users.id)) // 👈 Присоединяем автора
     .where(eq(articles.slug, slug))
     .limit(1);
 
@@ -69,7 +73,6 @@ export default async function NewsDetailPage({ params, searchParams }: NewsPageP
     notFound();
   }
 
-  // Локализованные значения
   const title = getLocalizedField(article, 'title', currentLang);
   const summary = getLocalizedField(article, 'summary', currentLang);
   const content = getLocalizedField(article, 'content', currentLang);
@@ -78,6 +81,12 @@ export default async function NewsDetailPage({ params, searchParams }: NewsPageP
     'name',
     currentLang
   );
+  const imageSource =
+    currentLang === 'kk'
+      ? article.imageSourceKk || article.imageSource
+      : currentLang === 'en'
+      ? article.imageSourceEn || article.imageSource
+      : article.imageSource;
 
   // 2. Инкрементируем счётчик просмотров
   await db
@@ -85,10 +94,8 @@ export default async function NewsDetailPage({ params, searchParams }: NewsPageP
     .set({ viewsCount: sql`${articles.viewsCount} + 1` })
     .where(eq(articles.id, article.id));
 
-  // 3. Загружаем категории для шапки
   const allCategories = await db.select().from(categories);
 
-  // 4. Загружаем комментарии к новости (включая parentId)
   const rawComments = await db
     .select({
       id: comments.id,
@@ -103,7 +110,6 @@ export default async function NewsDetailPage({ params, searchParams }: NewsPageP
     .where(eq(comments.articleId, article.id))
     .orderBy(desc(comments.createdAt));
 
-  // Построение древовидной структуры комментариев (Родитель -> Вложенные ответы)
   const commentMap = new Map<string, CommentType>();
   const rootComments: CommentType[] = [];
 
@@ -127,7 +133,6 @@ export default async function NewsDetailPage({ params, searchParams }: NewsPageP
     }
   });
 
-  // 5. Похожие новости из той же категории
   const relatedArticles = await db
     .select({
       id: articles.id,
@@ -156,7 +161,6 @@ export default async function NewsDetailPage({ params, searchParams }: NewsPageP
 
   return (
     <div className="min-h-screen bg-white text-neutral-900 font-sans">
-      {/* 🟢 ШАПКА / HEADER */}
       <header className="border-b border-gray-200 sticky top-0 bg-white/95 backdrop-blur z-50">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
           <div className="flex items-center space-x-6">
@@ -215,7 +219,6 @@ export default async function NewsDetailPage({ params, searchParams }: NewsPageP
         </div>
       </header>
 
-      {/* 📰 ОСНОВНОЙ КОНТЕНТ СТАТЬИ */}
       <main className="max-w-4xl mx-auto px-4 py-8">
         <Link
           href={`/?lang=${currentLang}`}
@@ -225,8 +228,7 @@ export default async function NewsDetailPage({ params, searchParams }: NewsPageP
         </Link>
 
         <article className="space-y-6">
-          {/* Метаданные новости */}
-          <div className="flex items-center gap-3 text-xs">
+          <div className="flex items-center gap-3 text-xs flex-wrap">
             <span className="bg-cyan-50 text-[#0096b1] border border-[#0096b1]/20 font-bold px-3 py-1 rounded-full uppercase">
               {categoryName || 'Новость'}
             </span>
@@ -246,41 +248,55 @@ export default async function NewsDetailPage({ params, searchParams }: NewsPageP
             </span>
           </div>
 
-          {/* Заголовок статьи */}
           <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 leading-tight">
             {title}
           </h1>
 
-          {/* Краткое описание (Summary) */}
           {summary && (
             <p className="text-lg font-medium text-gray-600 border-l-4 border-[#0096b1] pl-4 py-1 italic bg-gray-50 rounded-r-xl">
               {summary}
             </p>
           )}
 
-          {/* Обложка статьи */}
+          {/* ОБЛОЖКА И БЛОК АВТОРА / ИСТОЧНИКА ПОД НЕЙ */}
           {article.imageUrl && (
-            <div className="relative w-full aspect-[16/9] rounded-2xl overflow-hidden bg-gray-100 my-6 shadow-sm">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={article.imageUrl}
-                alt={title}
-                className="w-full h-full object-cover"
-              />
+            <div className="space-y-2 my-6">
+              <div className="relative w-full aspect-[16/9] rounded-2xl overflow-hidden bg-gray-100 shadow-sm">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={article.imageUrl}
+                  alt={title}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+
+              {/* 📸 ИСТОЧНИК ФОТО И АВТОР ПОД КАРТИНКОЙ */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs text-gray-500 px-1 gap-2">
+                {imageSource && (
+                  <div className="flex items-center gap-1.5 italic">
+                    <Camera className="w-3.5 h-3.5 text-[#0096b1]" />
+                    <span>Фото: {imageSource}</span>
+                  </div>
+                )}
+
+                {article.authorName && (
+                  <div className="flex items-center gap-1.5 font-medium text-gray-700 ml-auto">
+                    <PenTool className="w-3.5 h-3.5 text-[#0096b1]" />
+                    <span>Автор: {article.authorName}</span>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
-          {/* Полное содержание статьи (HTML от Tiptap) */}
           <div 
             className="text-gray-800 text-base md:text-lg leading-relaxed space-y-4 pt-2 [&>img]:rounded-2xl [&>img]:my-6 [&>img]:shadow-sm [&>blockquote]:border-l-4 [&>blockquote]:border-[#0096b1] [&>blockquote]:pl-4 [&>blockquote]:py-2 [&>blockquote]:italic [&>blockquote]:bg-gray-50 [&>blockquote]:rounded-r-xl"
             dangerouslySetInnerHTML={{ __html: content }}
           />
 
-          {/* 🔗 КНОПКИ "ПОДЕЛИТЬСЯ" */}
           <ShareButtons title={title} />
         </article>
 
-        {/* 💬 СЕКЦИЯ КОММЕНТАРИЕВ */}
         <section className="mt-12 pt-8 border-t border-gray-200">
           <div className="flex items-center gap-2 mb-6">
             <MessageSquare className="w-5 h-5 text-[#0096b1]" />
@@ -289,7 +305,6 @@ export default async function NewsDetailPage({ params, searchParams }: NewsPageP
             </h3>
           </div>
 
-          {/* Блок отправки базового комментария */}
           {session ? (
             <CommentForm articleId={article.id} />
           ) : (
@@ -315,7 +330,6 @@ export default async function NewsDetailPage({ params, searchParams }: NewsPageP
             </div>
           )}
 
-          {/* Древовидный список комментариев с постраничной подгрузкой */}
           {rootComments.length > 0 ? (
             <CommentListWrapper
               rootComments={rootComments}
@@ -330,7 +344,6 @@ export default async function NewsDetailPage({ params, searchParams }: NewsPageP
           )}
         </section>
 
-        {/* ПОХОЖИЕ НОВОСТИ */}
         {relatedArticles.length > 0 && (
           <section className="mt-16 pt-8 border-t border-gray-200">
             <h3 className="text-xl font-bold text-gray-900 mb-6">{dict.readAlso}</h3>

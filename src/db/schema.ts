@@ -21,6 +21,7 @@ export const users = pgTable('users', {
   isEmailVerified: boolean('is_email_verified').default(false).notNull(),
   verificationCode: text('verification_code'),
   googleId: text('google_id').unique(),
+  isBlocked: boolean('is_blocked').default(false).notNull(), // 👈 Новое поле
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
@@ -50,6 +51,9 @@ export const articles = pgTable('articles', {
   summaryEn: text('summary_en'),       // EN
   
   imageUrl: text('image_url'),
+  imageSource: text('image_source'),
+  imageSourceKk: text('image_source_kk'),   // Источник (KK)
+  imageSourceEn: text('image_source_en'),
   isHero: boolean('is_hero').default(false).notNull(),
   viewsCount: integer('views_count').default(0).notNull(),
   publishedAt: timestamp('published_at').defaultNow().notNull(),
