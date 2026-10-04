@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
+import type { Metadata } from 'next';
 import { db } from '@/src/db';
 import { articles, categories, comments, users } from '@/src/db/schema';
 import { eq, sql, desc, ne, and } from 'drizzle-orm';
@@ -23,6 +24,58 @@ interface NewsPageProps {
   searchParams: Promise<{
     lang?: string;
   }>;
+}
+
+// 🔍 Динамические мета-теги для SEO и превью в соцсетях
+export async function generateMetadata({
+  params,
+  searchParams,
+}: NewsPageProps): Promise<Metadata> {
+  const { slug } = await params;
+  const { lang } = await searchParams;
+  const currentLang = (lang || 'ru') as Locale;
+
+  const articleRows = await db
+    .select({
+      title: articles.title,
+      titleKk: articles.titleKk,
+      titleEn: articles.titleEn,
+      summary: articles.summary,
+      summaryKk: articles.summaryKk,
+      summaryEn: articles.summaryEn,
+      imageUrl: articles.imageUrl,
+    })
+    .from(articles)
+    .where(eq(articles.slug, slug))
+    .limit(1);
+
+  const article = articleRows[0];
+
+  if (!article) {
+    return {
+      title: 'Новость не найдена | Aqparat.com.kz',
+    };
+  }
+
+  const title = getLocalizedField(article, 'title', currentLang);
+  const description = getLocalizedField(article, 'summary', currentLang) || 'Оперативная новость на Aqparat.com.kz';
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: 'article',
+      images: article.imageUrl ? [article.imageUrl] : [],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: article.imageUrl ? [article.imageUrl] : [],
+    },
+  };
 }
 
 export default async function NewsDetailPage({ params, searchParams }: NewsPageProps) {
@@ -63,7 +116,7 @@ export default async function NewsDetailPage({ params, searchParams }: NewsPageP
     })
     .from(articles)
     .leftJoin(categories, eq(articles.categoryId, categories.id))
-    .leftJoin(users, eq(articles.authorId, users.id)) // 👈 Присоединяем автора
+    .leftJoin(users, eq(articles.authorId, users.id))
     .where(eq(articles.slug, slug))
     .limit(1);
 
