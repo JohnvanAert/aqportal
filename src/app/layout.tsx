@@ -9,6 +9,9 @@ export const metadata: Metadata = {
     default: "Aqparat.com.kz — Главные новости Казахстана и мира",
     template: "%s | Aqparat.com.kz",
   },
+  verification: {
+    google: 'WW6qX4wnmZRR0oMpG2syqaUhmQQuxMbCXwbwkz7I2Ok',
+  },
   description: "Оперативные новости политики, экономики, спорта, культуры и экологии в Казахстане и мире на русском, казахском и английском языках.",
   keywords: ["новости Казахстана", "Aqparat", "Шымкент новости", "политика", "экономика", "экология", "спорт"],
   authors: [{ name: "Aqparat Newsroom" }],
