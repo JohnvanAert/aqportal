@@ -3,7 +3,7 @@
 import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, CheckCircle2, AlertCircle, Upload, Loader2, Languages } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, AlertCircle, Upload, Loader2, Languages, Camera, UserCheck } from 'lucide-react';
 
 interface Category {
   id: string;
@@ -12,30 +12,41 @@ interface Category {
   nameEn?: string | null;
 }
 
+interface UserItem {
+  id: string;
+  name: string | null;
+  email: string;
+}
+
 export default function EditArticlePage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const { id: articleId } = use(params);
 
   const [categories, setCategories] = useState<Category[]>([]);
+  const [usersList, setUsersList] = useState<UserItem[]>([]);
   const [activeTab, setActiveTab] = useState<'RU' | 'KK' | 'EN'>('RU');
 
   // Поля на русском языке
   const [title, setTitle] = useState('');
   const [summary, setSummary] = useState('');
   const [content, setContent] = useState('');
+  const [imageSource, setImageSource] = useState('');
 
   // Поля на казахском языке
   const [titleKk, setTitleKk] = useState('');
   const [summaryKk, setSummaryKk] = useState('');
   const [contentKk, setContentKk] = useState('');
+  const [imageSourceKk, setImageSourceKk] = useState('');
 
   // Поля на английском языке
   const [titleEn, setTitleEn] = useState('');
   const [summaryEn, setSummaryEn] = useState('');
   const [contentEn, setContentEn] = useState('');
+  const [imageSourceEn, setImageSourceEn] = useState('');
 
   // Общие свойства
   const [categoryId, setCategoryId] = useState('');
+  const [authorId, setAuthorId] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [isHero, setIsHero] = useState(false);
 
@@ -48,26 +59,32 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
   useEffect(() => {
     Promise.all([
       fetch('/api/admin/categories').then((r) => r.json()),
+      fetch('/api/admin/users').then((r) => r.json()).catch(() => ({ users: [] })),
       fetch(`/api/admin/articles/${articleId}`).then((r) => r.json()),
     ])
-      .then(([catData, artData]) => {
+      .then(([catData, userData, artData]) => {
         if (catData.categories) setCategories(catData.categories);
+        if (userData.users) setUsersList(userData.users);
         if (artData.article) {
           const art = artData.article;
           // RU
           setTitle(art.title || '');
           setSummary(art.summary || '');
           setContent(art.content || '');
+          setImageSource(art.imageSource || '');
           // KK
           setTitleKk(art.titleKk || art.title_kk || '');
           setSummaryKk(art.summaryKk || art.summary_kk || '');
           setContentKk(art.contentKk || art.content_kk || '');
+          setImageSourceKk(art.imageSourceKk || art.image_source_kk || '');
           // EN
           setTitleEn(art.titleEn || art.title_en || '');
           setSummaryEn(art.summaryEn || art.summary_en || '');
           setContentEn(art.contentEn || art.content_en || '');
+          setImageSourceEn(art.imageSourceEn || art.image_source_en || '');
           // Общие
           setCategoryId(art.categoryId || '');
+          setAuthorId(art.authorId || '');
           setImageUrl(art.imageUrl || '');
           setIsHero(art.isHero || false);
         }
@@ -115,21 +132,20 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
     setError('');
     setSuccess('');
 
-    // 🛑 Строгая проверка обязательности ВСЕХ полей для каждого языка
     if (!title.trim() || !summary.trim() || !content.trim()) {
-      setError('Заполните все поля на русском языке (Заголовок, Краткое описание, Текст)!');
+      setError('Заполните все обязательные поля на русском языке!');
       setActiveTab('RU');
       return;
     }
 
     if (!titleKk.trim() || !summaryKk.trim() || !contentKk.trim()) {
-      setError('Заполните все поля на казахском языке (Қазақша)!');
+      setError('Заполните все обязательные поля на казахском языке!');
       setActiveTab('KK');
       return;
     }
 
     if (!titleEn.trim() || !summaryEn.trim() || !contentEn.trim()) {
-      setError('Заполните все поля на английском языке (English)!');
+      setError('Заполните все обязательные поля на английском языке!');
       setActiveTab('EN');
       return;
     }
@@ -144,16 +160,20 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
           title: title.trim(),
           summary: summary.trim(),
           content: content.trim(),
+          imageSource: imageSource.trim() || null,
 
           titleKk: titleKk.trim(),
           summaryKk: summaryKk.trim(),
           contentKk: contentKk.trim(),
+          imageSourceKk: imageSourceKk.trim() || null,
 
           titleEn: titleEn.trim(),
           summaryEn: summaryEn.trim(),
           contentEn: contentEn.trim(),
+          imageSourceEn: imageSourceEn.trim() || null,
 
           categoryId,
+          authorId: authorId || null,
           imageUrl: imageUrl || null,
           isHero,
         }),
@@ -203,7 +223,6 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <h1 className="text-2xl font-bold text-gray-900">Редактирование новости</h1>
 
-            {/* Вкладки выбора языка (с красными звездочками и зелеными галочками) */}
             <div className="flex items-center bg-gray-100 p-1 rounded-xl border border-gray-200">
               <button
                 type="button"
@@ -259,8 +278,8 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Общие свойства */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-gray-50 rounded-2xl border border-gray-200">
+            {/* Общие свойства: Категория, Автор, Обложка */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-4 bg-gray-50 rounded-2xl border border-gray-200">
               <div>
                 <label className="block text-xs font-bold text-gray-700 uppercase mb-2">
                   Категория <span className="text-red-500">*</span>
@@ -270,20 +289,29 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
                   onChange={(e) => setCategoryId(e.target.value)}
                   className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl text-sm font-medium text-gray-900 focus:outline-none focus:border-[#0096b1]"
                 >
-                  {categories.map((cat) => {
-                    const categoryName =
-                      activeTab === 'KK'
-                        ? cat.nameKk || cat.name
-                        : activeTab === 'EN'
-                        ? cat.nameEn || cat.name
-                        : cat.name;
+                  {categories.map((cat) => (
+                    <option key={cat.id} value={cat.id}>
+                      {cat.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-                    return (
-                      <option key={cat.id} value={cat.id}>
-                        {categoryName}
-                      </option>
-                    );
-                  })}
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase mb-2 flex items-center gap-1">
+                  <UserCheck className="w-3.5 h-3.5 text-[#0096b1]" /> Автор статьи
+                </label>
+                <select
+                  value={authorId}
+                  onChange={(e) => setAuthorId(e.target.value)}
+                  className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl text-sm font-medium text-gray-900 focus:outline-none focus:border-[#0096b1]"
+                >
+                  <option value="">Не указан</option>
+                  {usersList.map((usr) => (
+                    <option key={usr.id} value={usr.id}>
+                      {usr.name || usr.email}
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -294,7 +322,7 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
                 <div className="flex items-center gap-3">
                   <label className="cursor-pointer flex items-center gap-2 bg-white hover:bg-gray-100 text-gray-800 font-semibold px-4 py-3 rounded-xl text-xs transition border border-gray-300">
                     <Upload className="w-4 h-4 text-[#0096b1]" />
-                    {uploading ? 'Загрузка...' : 'Выбрать файл'}
+                    {uploading ? 'Загрузка...' : 'Выбрать'}
                     <input
                       type="file"
                       accept="image/*"
@@ -317,7 +345,7 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
               <div className="space-y-6">
                 <div className="flex items-center justify-between bg-cyan-50 border border-[#0096b1]/20 px-4 py-2.5 rounded-xl">
                   <span className="text-xs font-bold text-[#0096b1] flex items-center gap-1.5">
-                    <Languages className="w-4 h-4" /> Заполнение контента на русском языке
+                    <Languages className="w-4 h-4" /> Контент на русском языке
                   </span>
                 </div>
 
@@ -330,7 +358,20 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
                     required
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
-                    placeholder="Введите заголовок статьи"
+                    placeholder="Введите заголовок..."
+                    className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl text-sm font-medium text-gray-900 focus:outline-none focus:border-[#0096b1]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase mb-2 flex items-center gap-1.5">
+                    <Camera className="w-4 h-4 text-[#0096b1]" /> Источник фотографии (RU)
+                  </label>
+                  <input
+                    type="text"
+                    value={imageSource}
+                    onChange={(e) => setImageSource(e.target.value)}
+                    placeholder="Например: Пресс-служба / Pixabay"
                     className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl text-sm font-medium text-gray-900 focus:outline-none focus:border-[#0096b1]"
                   />
                 </div>
@@ -344,7 +385,7 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
                     required
                     value={summary}
                     onChange={(e) => setSummary(e.target.value)}
-                    placeholder="Краткая выжимка статьи..."
+                    placeholder="Краткое содержание..."
                     className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl text-sm font-medium text-gray-900 focus:outline-none focus:border-[#0096b1]"
                   />
                 </div>
@@ -358,7 +399,7 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
                     required
                     value={content}
                     onChange={(e) => setContent(e.target.value)}
-                    placeholder="Основное содержание новости..."
+                    placeholder="Текст новости..."
                     className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl text-sm font-medium text-gray-900 focus:outline-none focus:border-[#0096b1]"
                   />
                 </div>
@@ -370,7 +411,7 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
               <div className="space-y-6">
                 <div className="flex items-center justify-between bg-cyan-50 border border-[#0096b1]/20 px-4 py-2.5 rounded-xl">
                   <span className="text-xs font-bold text-[#0096b1] flex items-center gap-1.5">
-                    <Languages className="w-4 h-4" /> Мақаланы қазақ тілінде толтыру
+                    <Languages className="w-4 h-4" /> Қазақ тіліндегі мазмұны
                   </span>
                 </div>
 
@@ -383,7 +424,20 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
                     required
                     value={titleKk}
                     onChange={(e) => setTitleKk(e.target.value)}
-                    placeholder="Қазақша тақырыбын енгізіңіз"
+                    placeholder="Тақырып..."
+                    className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl text-sm font-medium text-gray-900 focus:outline-none focus:border-[#0096b1]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase mb-2 flex items-center gap-1.5">
+                    <Camera className="w-4 h-4 text-[#0096b1]" /> Фото көзі (KK)
+                  </label>
+                  <input
+                    type="text"
+                    value={imageSourceKk}
+                    onChange={(e) => setImageSourceKk(e.target.value)}
+                    placeholder="Мысалы: Әкімдіктің баспасөз қызметі"
                     className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl text-sm font-medium text-gray-900 focus:outline-none focus:border-[#0096b1]"
                   />
                 </div>
@@ -397,7 +451,7 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
                     required
                     value={summaryKk}
                     onChange={(e) => setSummaryKk(e.target.value)}
-                    placeholder="Қазақша қысқаша мазмұны..."
+                    placeholder="Қысқаша мазмұны..."
                     className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl text-sm font-medium text-gray-900 focus:outline-none focus:border-[#0096b1]"
                   />
                 </div>
@@ -411,7 +465,7 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
                     required
                     value={contentKk}
                     onChange={(e) => setContentKk(e.target.value)}
-                    placeholder="Қазақша толық мәтінін енгізіңіз..."
+                    placeholder="Толық мәтіні..."
                     className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl text-sm font-medium text-gray-900 focus:outline-none focus:border-[#0096b1]"
                   />
                 </div>
@@ -423,7 +477,7 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
               <div className="space-y-6">
                 <div className="flex items-center justify-between bg-cyan-50 border border-[#0096b1]/20 px-4 py-2.5 rounded-xl">
                   <span className="text-xs font-bold text-[#0096b1] flex items-center gap-1.5">
-                    <Languages className="w-4 h-4" /> Editing content in English
+                    <Languages className="w-4 h-4" /> Content in English
                   </span>
                 </div>
 
@@ -436,7 +490,20 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
                     required
                     value={titleEn}
                     onChange={(e) => setTitleEn(e.target.value)}
-                    placeholder="Enter article title in English"
+                    placeholder="Article title..."
+                    className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl text-sm font-medium text-gray-900 focus:outline-none focus:border-[#0096b1]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase mb-2 flex items-center gap-1.5">
+                    <Camera className="w-4 h-4 text-[#0096b1]" /> Photo Source (EN)
+                  </label>
+                  <input
+                    type="text"
+                    value={imageSourceEn}
+                    onChange={(e) => setImageSourceEn(e.target.value)}
+                    placeholder="For example: Press Service"
                     className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl text-sm font-medium text-gray-900 focus:outline-none focus:border-[#0096b1]"
                   />
                 </div>
@@ -450,7 +517,7 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
                     required
                     value={summaryEn}
                     onChange={(e) => setSummaryEn(e.target.value)}
-                    placeholder="Short summary in English..."
+                    placeholder="Short summary..."
                     className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl text-sm font-medium text-gray-900 focus:outline-none focus:border-[#0096b1]"
                   />
                 </div>
@@ -464,7 +531,7 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
                     required
                     value={contentEn}
                     onChange={(e) => setContentEn(e.target.value)}
-                    placeholder="Enter full content in English..."
+                    placeholder="Full content..."
                     className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl text-sm font-medium text-gray-900 focus:outline-none focus:border-[#0096b1]"
                   />
                 </div>
@@ -487,7 +554,7 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
             <button
               type="submit"
               disabled={submitting}
-              className="w-full bg-[#0096b1] hover:bg-[#007b92] text-white font-bold py-3.5 rounded-xl transition duration-200 shadow-md text-sm disabled:opacity-50"
+              className="w-full bg-[#0096b1] hover:bg-[#007b92] text-white font-bold py-3.5 rounded-xl transition duration-200 shadow-md text-sm disabled:opacity-50 cursor-pointer"
             >
               {submitting ? 'Сохранение...' : 'Сохранить изменения (RU / KK / EN)'}
             </button>
